@@ -22,4 +22,13 @@ class TUtils
         if ($erros)
             throw new Exception( implode('<br>', $erros) );
     }
+
+    public static function setValidation($form, $field, $validations = []) {
+        $control = $form->getField($field);
+        foreach ($validations as $validation) {
+            if (isset($validation)) {
+                $control->addValidation('<b>' . $control->getLabel() . '</b>', $validation );
+            }
+        }
+    }
 }

@@ -149,6 +149,8 @@ trait UIBuilderTrait
             $widget->setMaxLength((int) $properties->{'maxlen'});
         if (isset($properties->{'tip'})) 
             $widget->setTip((string) $properties->{'tip'});
+        if (isset($properties->{'label'}))
+            $widget->setLabel($properties->{'label'}->getValue());
         if (isset($properties->{'required'}) AND $properties->{'required'}) 
             if (isset($properties->{'label'}))
                 $widget->addValidation((string) '<b>' . $properties->{'label'}->getValue() . '</b>', new TRequiredValidator);

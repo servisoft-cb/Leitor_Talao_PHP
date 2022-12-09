@@ -23,14 +23,18 @@ class BaixaPedidoProc extends TSSFacilRecord
         parent::addattribute('r_transportadora');
     }
 
-    public static function execute($codigo_barras)
+    public static function execute($codigo_barras, $localizacao)
     {
         if ($conn = TTransaction::get())
         {
             $numero_pedido = substr($codigo_barras, 1, 6);
             $numero_item   = substr($codigo_barras, 7, 3);
             $funcionario   = TSession::getValue('userid');
-            $sql = "execute procedure prc_baixa_pedido_proc({$numero_pedido}, {$numero_item}, {$funcionario})";
+            if ($localizacao)
+                $sLocalizacao   = "'" . $localizacao . "'";
+            else
+                $sLocalizacao   = 'null';
+            $sql = "execute procedure prc_baixa_pedido_proc({$numero_pedido}, {$numero_item}, {$funcionario}, {$sLocalizacao})";
 
             TTransaction::log($sql);
             

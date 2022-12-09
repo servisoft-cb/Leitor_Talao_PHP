@@ -2,7 +2,7 @@
 return [
     'host'  =>  "localhost",
     'port'  =>  "",
-    'name'  =>  "D:/SSFacil.FDB",
+    'name'  =>  "D:/Google Drive/!desenvolvimento/cleomar/leitor_talao/SSFacil.FDB",
     'user'  =>  "SYSDBA",
     'pass'  =>  "masterkey",
     'type'  =>  "fbird",

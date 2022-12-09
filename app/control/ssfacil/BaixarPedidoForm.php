@@ -28,6 +28,7 @@ class BaixarPedidoForm extends TPage
         $this->form = new BootstrapFormBuilder('baixar_pedido_form');
         $this->form->setFormTitle('Baixar Pedido');
 
+        $label = new TLabel('Código de barras');
         if (self::isMobile())
         {
             $action = new TAction([$this, 'onExecute']);
@@ -38,15 +39,31 @@ class BaixarPedidoForm extends TPage
             $action = "Adianti.waitMessage = '$wait_message';";
             $action.= "__adianti_post_data('baixar_pedido_form', '{$url}');";
             $action.= "return false;";
-            $codigo_barras = $this->makeTBarCodeInputReader(['name' => 'codigo_barras', 'maxlen' => 10, 'required' => true, 'onChangeFunction' => $action]);
+            $codigo_barras = $this->makeTBarCodeInputReader(['name' => 'codigo_barras', 'maxlen' => 10, 'required' => true, 'label' => $label, 'onChangeFunction' => $action], 
+                function($object){
+                    $object->setExitAction(new TAction([$this, 'onCodBarExit'], ['static'=>'1']));
+                }
+            );
         } else 
         {
-            $codigo_barras = $this->makeTEntry(['name' => 'codigo_barras', 'maxlen' => 10, 'required' => true]);
+            $codigo_barras = $this->makeTEntry(['name' => 'codigo_barras', 'maxlen' => 10, 'label' => $label, 'required' => true], 
+                function($object){
+                    $object->setExitAction(new TAction([$this, 'onCodBarExit'], ['static'=>'1']));
+                }
+            );
         }
 
         $codigo_barras->addValidation('<b>Código de Barras</b>', new TMinLengthValidator, [10]);
 
-        $this->form->addFields( [new TLabel('Código de barras')], [$codigo_barras] );
+        $this->form->addFields( [$label], [$codigo_barras] );
+
+        $habLocalizacao = TSession::getValue('habLocalizacao');
+        $label = new TLabel('Localização');
+        $localizacao = $this->makeTEntry(['name' => 'localizacao', 'label' => $label, 'editable' => $habLocalizacao ?? false]);
+        $this->form->addFields( [$label], [$localizacao] );
+
+        if ($habLocalizacao)
+            TUtils::setValidation($this->form, 'localizacao', [new TRequiredValidator]);
 
         $entrada_transformer = function($value, $object, $row) {
             if ($value) 
@@ -98,6 +115,48 @@ class BaixarPedidoForm extends TPage
         parent::add($container);
     }
 
+    public function onCodBarExit($param)
+    {
+        // $action = new TAction([$this, 'buscarCEP']);
+        // $action->setParameters($param); 
+        
+        // if (!empty($param['cliea8cepres']))
+        //     new TEdQuestion('Deseja buscar os dados deste CEP?', $action);
+
+        try
+        {
+            TTransaction::open('ssfacil');
+            
+            // TUtils::setValidation($this->form, 'localizacao', [new TRequiredValidator]);
+
+            if (empty($param['codigo_barras']))
+                Exit;
+            
+            $infLocalizacao =InfLocalizacaoProc::execute($param['codigo_barras']);
+
+            TTransaction::close();
+
+            if ($infLocalizacao->r_informa == 'S')
+            {
+                TEntry::enableField('baixar_pedido_form', 'localizacao');
+                TSession::setValue('habLocalizacao', true);
+            } else 
+            {
+                TEntry::disableField('baixar_pedido_form', 'localizacao');
+                TSession::delValue('habLocalizacao');
+            }
+        }
+        catch (Exception $e) 
+        {
+            $object = $this->form->getData();
+            $this->form->setData($object);
+
+            new TMessage('error', $e->getMessage());
+            
+            TTransaction::rollback();
+        }
+    }
+
     public function onExecute($param)
     {
         try
@@ -108,7 +167,7 @@ class BaixarPedidoForm extends TPage
             
             $this->form->validate();
 
-            $baixaPedido = BaixaPedidoProc::execute($param['codigo_barras']);
+            $baixaPedido = BaixaPedidoProc::execute($param['codigo_barras'], $param['localizacao']);
 
             TTransaction::close();
 
