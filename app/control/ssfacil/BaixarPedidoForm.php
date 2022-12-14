@@ -57,12 +57,27 @@ class BaixarPedidoForm extends TPage
 
         $this->form->addFields( [$label], [$codigo_barras] );
 
-        $habLocalizacao = TSession::getValue('habLocalizacao');
+        $infLocalizacao = TSession::getValue('infLocalizacao');
+
+        if (!$infLocalizacao) {
+            $infLocalizacao = new stdClass;
+            $infLocalizacao->r_informa = 'N';
+            $infLocalizacao->r_localizacao = '';
+            $infLocalizacao->r_total_itens = 0;
+            $infLocalizacao->r_total_produzido = 0;
+        }
+
         $label = new TLabel('Localização');
-        $localizacao = $this->makeTEntry(['name' => 'localizacao', 'label' => $label, 'editable' => $habLocalizacao ?? false]);
+        $localizacao = $this->makeTEntry(['name' => 'localizacao', 'label' => $label, 'editable' => $infLocalizacao->r_informa == 'S', 'value' => $infLocalizacao->r_localizacao]);
         $this->form->addFields( [$label], [$localizacao] );
 
-        if ($habLocalizacao)
+        $total_itens = $this->makeTEntry(['name' => 'r_total_itens', 'editable' => false, 'value' => $infLocalizacao->r_total_itens]);
+        // $this->form->addFields( [new TLabel('Total itens')], [$total] );
+        $total_produzido = $this->makeTEntry(['name' => 'r_total_produzido', 'editable' => false, 'value' => $infLocalizacao->r_total_itens]);
+        $this->form->addFields( [new TLabel('Total produzido')], [$total_itens], [new TLabel('Total itens')], [$total_produzido] );
+
+
+        if ($infLocalizacao->r_informa == 'S')
             TUtils::setValidation($this->form, 'localizacao', [new TRequiredValidator]);
 
         $entrada_transformer = function($value, $object, $row) {
@@ -117,12 +132,6 @@ class BaixarPedidoForm extends TPage
 
     public function onCodBarExit($param)
     {
-        // $action = new TAction([$this, 'buscarCEP']);
-        // $action->setParameters($param); 
-        
-        // if (!empty($param['cliea8cepres']))
-        //     new TEdQuestion('Deseja buscar os dados deste CEP?', $action);
-
         try
         {
             TTransaction::open('ssfacil');
@@ -136,15 +145,16 @@ class BaixarPedidoForm extends TPage
 
             TTransaction::close();
 
+            TSession::setValue('infLocalizacao', $infLocalizacao);
             if ($infLocalizacao->r_informa == 'S')
             {
                 TEntry::enableField('baixar_pedido_form', 'localizacao');
-                TSession::setValue('habLocalizacao', true);
             } else 
             {
                 TEntry::disableField('baixar_pedido_form', 'localizacao');
-                TSession::delValue('habLocalizacao');
             }
+
+            TForm::sendData('baixar_pedido_form', $infLocalizacao, False, False, 200);
         }
         catch (Exception $e) 
         {
@@ -179,6 +189,7 @@ class BaixarPedidoForm extends TPage
                 $data->codigo_barras = '';
                 // TForm::sendData('baixar_pedido_form', $data, false, false, 500);
                 TScript::create("limpar();");
+                TSession::delValue('infLocalizacao');
             } else 
             {
                 new TMessage('error', $baixaPedido->r_msg);

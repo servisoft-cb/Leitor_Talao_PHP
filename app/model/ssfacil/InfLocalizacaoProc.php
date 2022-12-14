@@ -13,6 +13,9 @@ class InfLocalizacaoProc extends TSSFacilRecord
     {
         parent::__construct($id);
         parent::addAttribute('r_informa');
+        parent::addAttribute('r_total_itens');
+        parent::addAttribute('r_total_produzido');
+        parent::addAttribute('r_localizacao');
     }
 
     public static function execute($codigo_barras)
