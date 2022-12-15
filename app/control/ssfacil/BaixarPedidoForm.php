@@ -68,17 +68,17 @@ class BaixarPedidoForm extends TPage
         }
 
         $label = new TLabel('Localização');
-        $localizacao = $this->makeTEntry(['name' => 'localizacao', 'label' => $label, 'editable' => $infLocalizacao->r_informa == 'S', 'value' => $infLocalizacao->r_localizacao]);
+        $localizacao = $this->makeTEntry(['name' => 'r_localizacao', 'label' => $label, 'editable' => $infLocalizacao->r_informa == 'S']);
         $this->form->addFields( [$label], [$localizacao] );
 
-        $total_itens = $this->makeTEntry(['name' => 'r_total_itens', 'editable' => false, 'value' => $infLocalizacao->r_total_itens]);
+        $total_itens = $this->makeTEntry(['name' => 'r_total_itens', 'editable' => false]);
         // $this->form->addFields( [new TLabel('Total itens')], [$total] );
-        $total_produzido = $this->makeTEntry(['name' => 'r_total_produzido', 'editable' => false, 'value' => $infLocalizacao->r_total_itens]);
-        $this->form->addFields( [new TLabel('Total produzido')], [$total_itens], [new TLabel('Total itens')], [$total_produzido] );
+        $total_produzido = $this->makeTEntry(['name' => 'r_total_produzido', 'editable' => false]);
+        $this->form->addFields( [new TLabel('Total produzido')], [$total_produzido], [new TLabel('Total itens')], [$total_itens] );
 
 
         if ($infLocalizacao->r_informa == 'S')
-            TUtils::setValidation($this->form, 'localizacao', [new TRequiredValidator]);
+            TUtils::setValidation($this->form, 'r_localizacao', [new TRequiredValidator]);
 
         $entrada_transformer = function($value, $object, $row) {
             if ($value) 
@@ -130,7 +130,7 @@ class BaixarPedidoForm extends TPage
         parent::add($container);
     }
 
-    public function onCodBarExit($param)
+    public static function onCodBarExit($param)
     {
         try
         {
@@ -145,13 +145,13 @@ class BaixarPedidoForm extends TPage
 
             TTransaction::close();
 
-            TSession::setValue('infLocalizacao', $infLocalizacao);
+             TSession::setValue('infLocalizacao', $infLocalizacao);
             if ($infLocalizacao->r_informa == 'S')
             {
-                TEntry::enableField('baixar_pedido_form', 'localizacao');
+                TEntry::enableField('baixar_pedido_form', 'r_localizacao');
             } else 
             {
-                TEntry::disableField('baixar_pedido_form', 'localizacao');
+                TEntry::disableField('baixar_pedido_form', 'r_localizacao');
             }
 
             TForm::sendData('baixar_pedido_form', $infLocalizacao, False, False, 200);
@@ -177,19 +177,25 @@ class BaixarPedidoForm extends TPage
             
             $this->form->validate();
 
-            $baixaPedido = BaixaPedidoProc::execute($param['codigo_barras'], $param['localizacao']);
+            $baixaPedido = BaixaPedidoProc::execute($param['codigo_barras'], $param['r_localizacao']);
 
             TTransaction::close();
 
             if (empty($baixaPedido->r_msg))
             {
+                TSession::delValue('infLocalizacao');
+                
                 $this->dataGrid->addItems($baixaPedido->itens_processos);
 
                 $data = new stdClass;
                 $data->codigo_barras = '';
-                // TForm::sendData('baixar_pedido_form', $data, false, false, 500);
+                $data->r_informa = 'N';
+                $data->r_localizacao = '';
+                $data->r_total_itens = 0;
+                $data->r_total_produzido = 0;
+                TForm::sendData('baixar_pedido_form', $data, false, false, 500);
                 TScript::create("limpar();");
-                TSession::delValue('infLocalizacao');
+                TEntry::disableField('baixar_pedido_form', 'localizacao');
             } else 
             {
                 new TMessage('error', $baixaPedido->r_msg);
